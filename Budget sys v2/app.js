@@ -1767,25 +1767,34 @@ function showPage(pageName) {
     }
   }
   
-  if (pageName === 'home') {
-    homeActiveCategory = 'budget';
-    renderHomePage();
-  } else if (pageName === 'budget') {
-    showAllEntries = false;
-    renderBudgetPage(currentBudgetMonth);
-  } else if (pageName === 'savings') {
-    renderSavingsPage();
-  } else if (pageName === 'loans') {
-    renderLoansPage();
-  } else if (pageName === 'goals') {
-    renderGoalsPage();
-  } else if (pageName === 'settings') {
-    renderSettingsPage();
+  if (pafunction renderBudgetPage(monthKey) {
+  currentBudgetMonth = monthKey;
+  const totals = getTotalsForMonth(monthKey);
+  
+  const monthLabel = document.getElementById('budgetMonthLabel');
+  const remainingBalance = document.getElementById('remainingBalance');
+  
+  // Update budget summary cards
+  const totalIncomeElement = document.getElementById('totalIncome');
+  const totalExpensesElement = document.getElementById('totalExpenses');
+  const totalSavingsElement = document.getElementById('totalSavings');
+  
+  if (monthLabel) monthLabel.textContent = formatMonthLabel(monthKey);
+  if (remainingBalance) remainingBalance.textContent = formatINR(totals.remaining);
+  
+  // Update summary card values
+  if (totalIncomeElement) totalIncomeElement.textContent = formatINR(totals.income);
+  if (totalExpensesElement) totalExpensesElement.textContent = formatINR(totals.expense);
+  if (totalSavingsElement) {
+    // Calculate savings from the current month's entries
+    const savingsAmount = getSavingsForMonth(monthKey);
+    totalSavingsElement.textContent = formatINR(savingsAmount);
   }
-}
-
-function updateNavigationHighlight(pageName) {
-  document.querySelectorAll('.nav-btn').forEach(btn => {
+  
+  renderEntriesList(monthKey);
+  renderBudgetSummaryTable(monthKey);
+  updateNavigationHighlight('budget');
+}ctorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
   
@@ -2286,30 +2295,37 @@ function initApp() {
         sidebar && 
         !sidebar.contains(e.target) && 
         mobileMenuBtn &&
-        !mobileMenuBtn.contains(e.target) &&
-        !sidebar.classList.contains('hidden')) {
-      toggleSidebar();
-    }
-  });
-  
-  window.addEventListener('resize', () => {
-    const sidebar = document.getElementById('sidebar');
-    if (window.innerWidth >= 768 && sidebar && sidebar.classList.contains('hidden')) {
-      sidebar.classList.remove('hidden');
-      const backdrop = document.getElementById('mobileBackdrop');
-      if (backdrop) backdrop.remove();
-    }
-  });
-  
-  setTimeout(() => {
-    const totalEntries = Object.values(store.entries).flat().length;
-    if (totalEntries === 0) {
-      showToast('Welcome! Start by adding your first budget entry.', 'info');
-    }
-  }, 1000);
-}
-
-// ---------- Event Listeners ----------
+        !mobileMenuBtn.con// ---------- Global Functions ----------
+window.showPage = showPage;
+window.toggleSidebar = toggleSidebar;
+window.showAddEntryModal = showAddEntryModal;
+window.exportData = exportData;
+window.hideModal = hideModal;
+window.showModal = showModal;
+window.showToast = showToast;
+window.editEntry = editEntry;
+window.confirmDeleteEntry = confirmDeleteEntry;
+window.deleteEntryConfirmed = deleteEntryConfirmed;
+window.changeBudgetMonth = changeBudgetMonth;
+window.switchHomeCategory = switchHomeCategory;
+window.navigateChartWindow = navigateChartWindow;
+window.navigateToCurrentMonthBudget = navigateToCurrentMonthBudget;
+window.toggleViewMore = toggleViewMore;
+window.navigateHomeChartMonths = navigateHomeChartMonths;
+window.showAddLoanModal = showAddLoanModal;
+window.showEditLoanModal = showEditLoanModal;
+window.showAddPaymentModal = showAddPaymentModal;
+window.confirmDeleteLoan = confirmDeleteLoan;
+window.deleteLoanConfirmed = deleteLoanConfirmed;
+window.showAddGoalModal = showAddGoalModal;
+window.showEditGoalModal = showEditGoalModal;
+window.showAddSavingsToGoalModal = showAddSavingsToGoalModal;
+window.confirmDeleteGoal = confirmDeleteGoal;
+window.deleteGoalConfirmed = deleteGoalConfirmed;
+window.showAddSavingsModal = showAddSavingsModal;
+window.removeCustomCategory = removeCustomCategory;
+window.confirmClearData = confirmClearData;
+window.clearAllDataConfirmed = clearAllDataConfirmed;t Listeners ----------
 function setupEventListeners() {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2505,62 +2521,33 @@ function showAddPaymentModal(loanId) {
         amount: paymentAmount,
         date: formData.get('date'),
         note: `Loan payment to ${loan.lender || 'lender'}. ${formData.get('notes') || ''}`
-      };
-      
-      addEntry(paymentEntry);
-      
-      hideModal();
-      renderLoansPage();
-      if (activePage === 'home') {
-        renderHomePage();
-      }
-    }
-  });
-}
-
-function confirmDeleteLoan(loanId) {
-  showConfirmationModal(
-    'Delete Loan',
-    'Are you sure you want to delete this loan? This action cannot be undone.',
-    `deleteLoanConfirmed('${loanId}')`
-  );
-}
-
-function deleteLoanConfirmed(loanId) {
-  if (deleteLoan(loanId)) {
-    renderLoansPage();
-    if (activePage === 'home') {
-      renderHomePage();
-    }
-  }
-}
-
-function showEditGoalModal(goalId) {
+      };function showAddSavingsToGoalModal(goalId) {
   const goal = store.goals.find(g => g.id === goalId);
   if (!goal) return;
   
+  const progress = getGoalProgress(goal);
+  const remaining = goal.targetAmount * (1 - progress / 100);
+  
   const modal = `
     <div class="modal-content">
-      <h3 class="modal-title">Edit Goal</h3>
-      <form id="goalForm" class="modal-form">
+      <h3 class="modal-title">Add Savings to Goal</h3>
+      <p class="modal-message">Goal: <strong>${goal.title}</strong></p>
+      <p class="modal-message">Remaining amount: <strong>${formatINR(remaining)}</strong></p>
+      <form id="savingsForm" class="modal-form">
         <div class="form-field">
-          <label class="form-label">Goal Title</label>
-          <input type="text" name="title" value="${goal.title}" required class="form-input">
+          <label class="form-label">Savings Amount (₹)</label>
+          <input type="number" name="amount" step="0.01" max="${remaining}" required class="form-input" placeholder="0.00">
         </div>
         <div class="form-field">
-          <label class="form-label">Description (optional)</label>
-          <textarea name="description" rows="2" class="form-textarea">${goal.description || ''}</textarea>
+          <label class="form-label">Date</label>
+          <input type="date" name="date" required class="form-input" value="${new Date().toISOString().split('T')[0]}">
         </div>
         <div class="form-field">
-          <label class="form-label">Target Amount (₹)</label>
-          <input type="number" name="targetAmount" value="${goal.targetAmount}" step="0.01" required class="form-input">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Target Date</label>
-          <input type="date" name="targetDate" value="${goal.targetDate}" required class="form-input">
+          <label class="form-label">Note (optional)</label>
+          <textarea name="note" rows="3" class="form-textarea" placeholder="Savings notes..."></textarea>
         </div>
         <div class="modal-actions">
-          <button type="submit" class="btn-primary">Update Goal</button>
+          <button type="submit" class="btn-primary">Add Savings</button>
           <button type="button" onclick="hideModal()" class="btn-secondary">Cancel</button>
         </div>
       </form>
@@ -2569,7 +2556,203 @@ function showEditGoalModal(goalId) {
   
   showModal(modal);
   
-  const form = document.getElementById('goalForm');
+  const form = document.getElementById('savingsForm');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    
+    const amount = parseFloat(formData.get('amount'));
+    const description = `Savings for goal: ${goal.title}`;
+    const date = formData.get('date');
+    const note = formData.get('note') || '';
+    
+    if (addSavings(amount, description, date, note)) {
+      hideModal();
+      renderGoalsPage();
+      if (activePage === 'home') {
+        renderHomePage();
+      }
+    }
+  });
+}
+
+function renderSavingsHistoryChart(savingsData) {
+  const ctx = document.getElementById('savingsHistoryChart');
+  if (!ctx) return;
+
+  if (savingsChartInstance) {
+    savingsChartInstance.destroy();
+    savingsChartInstance = null;
+  }
+
+  const hasData = savingsData.some(d => d.savings > 0);
+  
+  if (!hasData) {
+    const chartContainer = ctx.closest('.savings-chart-card');
+    if (chartContainer) {
+      chartContainer.innerHTML = `
+        <div class="section-header">
+          <h3 class="section-title">Savings History</h3>
+          <button onclick="showAddSavingsModal()" class="primary-btn">Add Savings</button>
+        </div>
+        <div class="empty-chart-state">
+          <div class="empty-chart-icon">💾</div>
+          <h3 class="empty-chart-title">No Savings Data</h3>
+          <p class="empty-chart-message">Start adding savings to see your progress over time</p>
+          <button onclick="showAddSavingsModal()" class="empty-chart-button">
+            Add Your First Savings
+          </button>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  savingsChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: savingsData.map(d => d.label),
+      datasets: [
+        {
+          label: 'Monthly Savings',
+          data: savingsData.map(d => d.savings),
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderColor: 'rgba(16, 185, 129, 1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: value => formatINR(value)
+          },
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)'
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: context => 'Savings: ' + formatINR(context.parsed.y)
+          }
+        },
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+}
+
+function renderSavingsEntriesList() {
+  const list = document.getElementById('savingsEntriesList');
+  if (!list) return;
+  
+  const savingsEntries = Object.values(store.entries)
+    .flat()
+    .filter(e => e.type === 'expense' && e.category === 'Savings')
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 10);
+  
+  if (savingsEntries.length === 0) {
+    list.innerHTML = '<div class="empty-transactions">No savings entries yet. Add savings to see them here.</div>';
+    return;
+  }
+  
+  list.innerHTML = savingsEntries.map(entry => `
+    <div class="transaction-item">
+      <div class="transaction-info">
+        <div class="transaction-description">${entry.description || 'Savings'}</div>
+        <div class="transaction-meta">${new Date(entry.date).toLocaleDateString('en-IN')}${entry.note ? ` • ${entry.note}` : ''}</div>
+      </div>
+      <div class="transaction-amount savings">
+        ${formatINR(entry.amount)}
+        <div class="transaction-type">savings</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function confirmDeleteGoal(goalId) {
+  showConfirmationModal(
+    'Delete Goal',
+    'Are you sure you want to delete this goal? This action cannot be undone.',
+    `deleteGoalConfirmed('${goalId}')`
+  );
+}
+
+function deleteGoalConfirmed(goalId) {
+  if (deleteGoal(goalId)) {
+    renderGoalsPage();
+    if (activePage === 'home') {
+      renderHomePage();
+    }
+  }
+}
+
+function removeCustomCategory(category) {
+  const defaultCategories = getDefaultCategories();
+  if (defaultCategories.includes(category)) {
+    showToast('Cannot remove default categories', 'error');
+    return;
+  }
+  
+  const index = store.settings.expenseCategories.indexOf(category);
+  if (index > -1) {
+    store.settings.expenseCategories.splice(index, 1);
+    if (saveStore(store)) {
+      renderSettingsPage();
+      showToast('Category removed successfully', 'success');
+    }
+  }
+}
+
+function confirmClearData() {
+  showConfirmationModal(
+    'Clear All Data',
+    'This will permanently delete all your budget data, including entries, goals, loans, and settings. This action cannot be undone. Are you sure?',
+    'clearAllDataConfirmed'
+  );
+}
+
+function clearAllDataConfirmed() {
+  localStorage.removeItem(STORAGE_KEY);
+  showToast('All data cleared successfully', 'success');
+  setTimeout(() => {
+    location.reload();
+  }, 1000);
+}
+
+function handleImportFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  if (file.type !== 'application/json') {
+    showToast('Please select a valid JSON file', 'error');
+    return;
+  }
+  
+  importData(file, false);
+  input.value = '';
+}
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = new FormData(form);
