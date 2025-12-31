@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Personal Budget App</title>
+  <meta name="description" content="Track your personal finances, budget, savings, loans and goals">
+
+  <!-- Tailwind CSS CDN (Play CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f0ff',
+              100: '#e0e0ff', 
+              500: '#ccccff',
+              600: '#A3A3CC',
+              700: '#5C5C99',
+              800: '#292966',
+            },
+            accent: {
+              400: '#ffd966',
+              500: '#ffcc33',
+              600: '#e6b800',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Flatpickr for date picking -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+            <aside 
+  id="sidebar" 
+  class="relative w-64 overflow-hidden shadow-xl border-r border-primary-700/20 hidden md:flex md:flex-col"
+>
+    <!-- Pattern background -->
+    <div class="absolute inset-0 sidebar-pattern"></div>
+
+    <!-- Sidebar content wrapper -->
+    <div class="relative z-10 flex flex-col h-full">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-white/10">
+            <div>
+                <h1 class="text-2xl font-bold text-white">PH</h1>
+                <p class="text-sm text-primary-100 mt-1">PlaceHolder</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="p-3 flex-1 overflow-y-auto">
+            <ul class="space-y-1">
+                <li>
+                    <button data-page="home" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">🏠</span>
+                        <span>Home</span>
+                    </button>
+                </li>
+
+                <li>
+                    <button data-page="budget" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">📊</span>
+                        <span>Budget</span>
+                    </button>
+                </li>
+
+                <li>
+                    <button data-page="savings" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">💾</span>
+                        <span>Savings</span>
+                    </button>
+                </li>
+
+                <li>
+                    <button data-page="loans" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">💳</span>
+                        <span>Loans</span>
+                    </button>
+                </li>
+
+                <li>
+                    <button data-page="goals" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">🎯</span>
+                        <span>Goals</span>
+                    </button>
+                </li>
+
+                <li>
+                    <button data-page="settings" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-3 font-medium">
+                        <span class="text-xl">⚙️</span>
+                        <span>Settings</span>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-white/10 text-sm">
+            <div class="flex gap-2">
+                <button id="exportBtn" class="flex-1 bg-accent-500 hover:bg-accent-600 text-white px-3 py-2.5 rounded-lg font-medium transition-all duration-200 hover:shadow-lg">
+                    Export
+                </button>
+
+                <label for="importInput" class="flex-1 bg-white/10 hover:bg-white/20 text-white px-3 py-2.5 rounded-lg cursor-pointer text-center font-medium transition-all duration-200">
+                    Import
+                </label>
+                <input id="importInput" type="file" accept="application/json" class="hidden" />
+            </div>
+
+            <p class="mt-3 text-xs text-primary-200">
+                Storage: <code class="bg-white/10 px-2 py-0.5 rounded">hb_budget_v1</code>
+            </p>
+        </div>
+
+    </div> <!-- /wrapper -->
+</aside>
+
+    <!-- Mobile topbar -->
+    <div class="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40 shadow-sm">
+      <div class="flex items-center justify-between p-4">
+        <div class="flex items-center gap-3">
+          <button id="mobileMenuBtn" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors z-50" aria-label="Toggle navigation">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <strong class="text-lg">Budget</strong>
+        </div>
+        <button id="mobileExport" class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors">
+          Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-auto pt-16 md:pt-0" id="main">
+      <!-- Pages -->
+      <section id="page-home" class="page">
+        <div class="max-w-5xl mx-auto p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-bold text-gray-900">Dashboard Overview</h2>
+              <p class="text-gray-500 mt-1">Track your finances across categories</p>
+            </div>
+            <div class="hidden"></div>
+          </div>
+
+          <!-- Updated: This container will hold the category buttons and dynamic content -->
+          <div
+            id="expensesChartContainer"
+            class="relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <!-- JavaScript will inject category buttons and charts here -->
+            <div class="text-center text-gray-500 py-8">
+              Loading dashboard...
+            </div>
+          </div>
+
+          <h3 class="mt-8 mb-4 text-xl font-semibold text-gray-900">Recent Transactions</h3>
+          <div
+            id="recentList"
+            class="relative rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl divide-y divide-white/10 overflow-hidden transition-all duration-300 hover:shadow-2xl"
+          ></div>
+        </div>
+      </section>
+
+      <section id="page-budget" class="page hidden">
+        <div class="max-w-5xl mx-auto p-6">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+            <div>
+              <div class="flex items-center gap-3">
+                <button id="budgetPrev" class="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm" aria-label="Previous month">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                  </svg>
+                </button>
+                <h2 id="budgetMonthLabel" class="text-3xl font-bold text-gray-900 ml-2"></h2>
+                <button id="budgetNext" class="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm" aria-label="Next month">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="text-left md:text-right bg-gradient-to-br from-primary-50 to-accent-50 p-4 rounded-xl border border-primary-100">
+              <div class="text-sm text-gray-600 font-medium">Remaining Balance</div>
+              <div id="remainingBalance" class="text-3xl font-bold text-primary-700 mt-1">₹ 0.00</div>
+            </div>
+          </div>
+
+          <div
+            class="relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-semibold text-gray-900">Entries</h3>
+              <button id="addEntryBtn" class="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 hover:shadow-lg flex items-center gap-2">
+                <span class="text-lg">+</span>
+                <span>Add Entry</span>
+              </button>
+            </div>
+
+            <div id="entriesList" class="divide-y divide-gray-100"></div>
+            <!-- Monthly Summary Table -->
+            <div
+              id="budgetSummaryContainer"
+              class="mt-8 relative p-6 rounded-2xl bg-white/40 backdrop-blur-xl border border-white/30 shadow-md transition-all duration-300 hover:shadow-lg"
+            >
+              <h3 class="text-xl font-semibold text-gray-900 mb-4">Monthly Summary</h3>
+
+              <table class="w-full summary-table">
+                <thead>
+                  <tr>
+                    <th class="text-left">Type</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Total Income</td>
+                    <td id="summaryIncome" class="text-right font-semibold text-green-600">₹0.00</td>
+                  </tr>
+                  <tr>
+                    <td>Total Expenses</td>
+                    <td id="summaryExpense" class="text-right font-semibold text-red-600">₹0.00</td>
+                  </tr>
+                  <tr class="border-t">
+                    <td>Remaining Balance</td>
+                    <td id="summaryRemaining" class="text-right font-bold text-primary-700">₹0.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="page-savings" class="page hidden">
+        <div class="max-w-5xl mx-auto p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-bold text-gray-900">Savings</h2>
+              <p class="text-gray-500 mt-1">Track your savings accounts</p>
+            </div>
+            <button id="addSavingsBtn" class="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 hover:shadow-lg flex items-center gap-2">
+              <span class="text-lg">+</span>
+              <span>Add Savings</span>
+            </button>
+          </div>
+
+          <div
+            class="relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <div id="savingsList" class="divide-y divide-gray-100"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-loans" class="page hidden">
+        <div class="max-w-5xl mx-auto p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-bold text-gray-900">Loans</h2>
+              <p class="text-gray-500 mt-1">Manage your loan obligations</p>
+            </div>
+            <button id="addLoanBtn" class="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 hover:shadow-lg flex items-center gap-2">
+              <span class="text-lg">+</span>
+              <span>Add Loan</span>
+            </button>
+          </div>
+
+          <div
+            class="relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <div id="loansList" class="divide-y divide-gray-100"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-goals" class="page hidden">
+        <div class="max-w-5xl mx-auto p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-bold text-gray-900">Goals</h2>
+              <p class="text-gray-500 mt-1">Set and track financial goals</p>
+            </div>
+            <button id="addGoalBtn" class="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 hover:shadow-lg flex items-center gap-2">
+              <span class="text-lg">+</span>
+              <span>Add Goal</span>
+            </button>
+          </div>
+
+          <div
+            class="relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <div id="goalsList" class="divide-y divide-gray-100"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-settings" class="page hidden">
+        <div class="max-w-5xl mx-auto p-6">
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900">Settings</h2>
+            <p class="text-gray-500 mt-1">Import & export your data</p>
+          </div>
+          
+          <div
+            class="mt-6 relative p-6 rounded-2xl bg-white/25 backdrop-blur-2xl border border-white/20 shadow-xl transition-all duration-300 hover:shadow-2xl"
+          >
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Data Management</h3>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button id="exportBtn2" class="bg-primary-600 hover:bg-primary-700 text-white px-5 py-3 rounded-lg font-medium transition-all duration-200 hover:shadow-lg">
+                Export JSON
+              </button>
+              <label for="importInput2" class="bg-white border-2 border-gray-300 hover:border-primary-500 px-5 py-3 rounded-lg cursor-pointer text-center font-medium transition-all duration-200 hover:bg-gray-50">
+                Import JSON
+              </label>
+              <input id="importInput2" type="file" accept="application/json" class="hidden" />
+            </div>
+            <p class="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              💡 You can replace or merge data during import. Exported files contain all your budget data.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="modalRoot" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <!-- Dynamic modal content injected by JS -->
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
